@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Gestión de Citas</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+<div class="container mt-5">
+    <h1>Gestión de Citas</h1>
+
+    <!-- Formulario para Crear/Editar Citas -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h2 id="form-title">Crear Cita</h2>
+            <form id="appointment-form">
+                <div class="mb-3">
+                    <label for="details" class="form-label">Detalles</label>
+                    <input type="text" class="form-control" id="details" required>
+                </div>
+                <button type="button" class="btn btn-primary" onclick="saveAppointment()">Guardar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lista de Citas -->
+    <div class="card">
+        <div class="card-body">
+            <h2>Listado de Citas</h2>
+            <ul id="appointments-list" class="list-group"></ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    const apiUrl = '/api/appointments';
+
+    // Cargar todas las citas al cargar la página
+    document.addEventListener('DOMContentLoaded', fetchAppointments);
+
+    async function fetchAppointments() {
+        try {
+            const response = await axios.get(apiUrl);
+            const appointments = response.data;
+            const list = document.getElementById('appointments-list');
+            list.innerHTML = '';
+
+            appointments.forEach(appointment => {
+                const item = document.createElement('li');
+                item.classList.add('list-group-item');
+                item.innerHTML = `
+                    <strong>ID:</strong> ${appointment.id} |
+                    <strong>Estado:</strong> ${appointment.status} |
+                    <strong>Detalles:</strong> ${appointment.details}
+                    <button class="btn btn-sm btn-warning ms-2" onclick="editAppointment(${appointment.id}, '${appointment.details}')">Editar</button>
+                    <button class="btn btn-sm btn-danger ms-2" onclick="deleteAppointment(${appointment.id})">Eliminar</button>
+                    <button class="btn btn-sm btn-success ms-2" onclick="updateStatus(${appointment.id}, 'COMPLETED')">Completar</button>
+                `;
+                list.appendChild(item);
+            });
+        } catch (error) {
+            console.error('Error al cargar citas:', error);
+        }
+    }
+
+    async function saveAppointment() {
+        const details = document.getElementById('details').value;
+        const id = document.getElementById('appointment-id')?.value;
+
+        try {
+            if (id) {
+                // Editar cita
+                await axios.put(`${apiUrl}/${id}`, { details });
+                alert('Cita actualizada exitosamente');
+            } else {
+                // Crear cita
+                await axios.post(apiUrl, { details });
+                alert('Cita creada exitosamente');
+            }
+            fetchAppointments();
+        } catch (error) {
+            console.error('Error al guardar cita:', error);
+        }
+    }
+
+    async function deleteAppointment(id) {
+        if (confirm('¿Seguro que deseas eliminar esta cita?')) {
+            try {
+                await axios.delete(`${apiUrl}/${id}`);
+                alert('Cita eliminada exitosamente');
+                fetchAppointments();
+            } catch (error) {
+                console.error('Error al eliminar cita:', error);
+            }
+        }
+    }
+
+    async function updateStatus(id, status) {
+        try {
+            await axios.put(`${apiUrl}/${id}/status`, { status });
+            alert('Estado de la cita actualizado');
+            fetchAppointments();
+        } catch (error) {
+            console.error('Error al actualizar estado:', error);
+        }
+    }
+
+    function editAppointment(id, details) {
+        document.getElementById('form-title').textContent = 'Editar Cita';
+        document.getElementById('details').value = details;
+
+        // Agregar un campo oculto para el ID
+        const form = document.getElementById('appointment-form');
+        let hiddenInput = document.getElementById('appointment-id');
+        if (!hiddenInput) {
+            hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.id = 'appointment-id';
+            form.appendChild(hiddenInput);
+        }
+        hiddenInput.value = id;
+    }
+</script>
+</body>
+</html>
